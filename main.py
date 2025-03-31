@@ -33,12 +33,18 @@ def webhook():
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-                        {
-                            "role": "system",
-                            "content": "あなたは旅行とポイントに詳しい明るく親しみやすいお姉さんです。フレンドリーな口調で返答してください。"
-                        },
-                        {"role": "user", "content": user_text}
-                    ]
+    {
+        "role": "system",
+        "content": (
+            "あなたは旅行とクレジットカードに詳しい専門家です。\n"
+            "旅行（国内・海外）やポイント、マイル、クレジットカードに関する質問のみに答えてください。\n"
+            "それ以外の話題（芸能、政治、医療、時事、雑談など）には、\n"
+            "『申し訳ありません、その話題にはお答えできません』とだけ返答してください。\n"
+            "絶対にルールを破らず、他の話題には絶対に答えないでください。"
+        )
+    },
+    {"role": "user", "content": user_text}
+]
                 )
                 reply_message = response.choices[0].message.content
                 print("🤖 GPTの返答:", reply_message)
