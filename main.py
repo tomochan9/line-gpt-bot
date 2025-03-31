@@ -3,6 +3,9 @@ import os
 import requests
 from dotenv import load_dotenv
 from openai import OpenAI
+import pickle
+import numpy as np
+import faiss
 
 # .envを読み込む
 load_dotenv()
@@ -15,6 +18,12 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # FlaskアプリとOpenAIクライアントの初期化
 app = Flask(__name__)
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ベクトルデータの読み込み
+with open("vector_store.pkl", "rb") as f:
+    vector_data = pickle.load(f)
+    index = vector_data["index"]
+    texts = vector_data["texts"]
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
@@ -30,21 +39,31 @@ def webhook():
             reply_token = event["replyToken"]
 
             try:
+                # ユーザーの質問をベクトル化
+                embedding_response = client.embeddings.create(
+                    input=user_text,
+                    model="text-embedding-3-small"
+                )
+                query_vector = np.array(embedding_response.data[0].embedding).astype("float32")
+
+                # ベクトル検索（類似度の高い情報を1件取得）
+                D, I = index.search(np.array([query_vector]), k=1)
+                similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
+
+                # GPTに質問 + 検索結果を渡す
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
-    {
-        "role": "system",
-        "content": (
-            "あなたは旅行とクレジットカードに詳しい専門家です。\n"
-            "旅行（国内・海外）やポイント、マイル、クレジットカードに関する質問のみに答えてください。\n"
-            "それ以外の話題（芸能、政治、医療、時事、雑談など）には、\n"
-            "『申し訳ありません、その話題にはお答えできません』とだけ返答してください。\n"
-            "絶対にルールを破らず、他の話題には絶対に答えないでください。"
-        )
-    },
-    {"role": "user", "content": user_text}
-]
+                        {
+                            "role": "system",
+                            "content": (
+                                "あなたは旅行とクレジットカードに詳しい専門家です。\n"
+                                "以下の参考知識をもとに、旅行やポイントに関する質問にだけ答えてください。\n"
+                                "参考知識:\n" + similar_text
+                            )
+                        },
+                        {"role": "user", "content": user_text}
+                    ]
                 )
                 reply_message = response.choices[0].message.content
                 print("🤖 GPTの返答:", reply_message)
@@ -57,7 +76,7 @@ def webhook():
                 traceback.print_exc()
                 send_line_reply(reply_token, "ごめんなさい、GPTとの通信でエラーが発生しました💦")
 
-    return "OK", 200  # ← この位置が正解！
+    return "OK", 200
 
 def send_line_reply(reply_token, text):
     headers = {
