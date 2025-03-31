@@ -44,12 +44,15 @@ def webhook():
                     input=user_text,
                     model="text-embedding-3-small"
                 )
-                query_vector = np.array(embedding_response.data[0].embedding).astype("float32")
-                query_vector = np.array([query_vector])  # 2次元に変換
+                query_vector = np.array(embedding_response.data[0].embedding).astype("float32").reshape(1, -1)
 
                 # ベクトル検索（類似度の高い情報を1件取得）
-                D, I = index.search(query_vector, 1)
-                similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
+                try:
+                    D, I = index.search(query_vector, k=1)
+                    similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
+                except Exception as e:
+                    print("❌ ベクトル検索エラー:", e)
+                    similar_text = "（参考知識の取得に失敗しました）"
 
                 if not similar_text:
                     similar_text = "（参考知識が見つかりませんでした）"
