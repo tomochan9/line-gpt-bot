@@ -40,25 +40,23 @@ def webhook():
 
             try:
                 # ユーザーの質問をベクトル化
-embedding_response = client.embeddings.create(
-    input=user_text,
-    model="text-embedding-3-small"
-)
-query_vector = np.array(embedding_response.data[0].embedding).astype("float32")
-query_vector = np.array([query_vector])  # 2次元に
+                embedding_response = client.embeddings.create(
+                    input=user_text,
+                    model="text-embedding-3-small"
+                )
+                query_vector = np.array(embedding_response.data[0].embedding).astype("float32")
+                query_vector = np.array([query_vector])  # 2次元に変換
 
-# ベクトル検索（類似度の高い情報を1件取得）
-D, I = index.search(query_vector, 1)
-similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
+                # ベクトル検索（類似度の高い情報を1件取得）
+                D, I = index.search(query_vector, 1)
+                similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
 
-
-                # 空だった場合の処理（任意）
                 if not similar_text:
                     similar_text = "（参考知識が見つかりませんでした）"
 
                 print("🔍 類似した知識:", similar_text)
 
-                # GPTに質問 + 検索結果を渡す（強く制限）
+                # GPTに質問 + 検索結果を渡す
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
