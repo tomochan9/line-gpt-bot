@@ -27,25 +27,20 @@ def webhook():
             user_text = event["message"]["text"]
             reply_token = event["replyToken"]
 
-            try:
+try:
     # GPTで返信を生成
     response = client.chat.completions.create(
         model="gpt-4",
         messages=[
-            {"role": "system", "content": "あなたは旅行とポイントに詳しい明るいお姉さんです。フレンドリーな口調で返答してください。"},
+            {
+                "role": "system",
+                "content": "あなたは旅行とポイントに詳しい明るく親しみやすいお姉さんです。"
+            },
             {"role": "user", "content": user_text}
         ]
     )
     reply_message = response.choices[0].message.content
-    print("🤖 GPTの返答：", reply_message)
-    send_line_reply(reply_token, reply_message)
-
-except Exception as e:
-    import traceback
-    print("❌ GPTエラー：", e)
-    traceback.print_exc()  # ← これを追加！
-    send_line_reply(reply_token, "ごめんなさい、GPTとの通信でエラーが発生しました💦")
-
+    print("🤖 GPTの返答：", reply_message_
 
     return "OK", 200
 
