@@ -40,15 +40,17 @@ def webhook():
 
             try:
                 # ユーザーの質問をベクトル化
-                embedding_response = client.embeddings.create(
-                    input=user_text,
-                    model="text-embedding-3-small"
-                )
-                query_vector = np.array(embedding_response.data[0].embedding).astype("float32")
+embedding_response = client.embeddings.create(
+    input=user_text,
+    model="text-embedding-3-small"
+)
+query_vector = np.array(embedding_response.data[0].embedding).astype("float32")
+query_vector = np.array([query_vector])  # 2次元に
 
-                # ベクトル検索（類似度の高い情報を1件取得）
-                D, I = index.search(np.array([query_vector]), k=1)
-                similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
+# ベクトル検索（類似度の高い情報を1件取得）
+D, I = index.search(query_vector, 1)
+similar_text = texts[I[0][0]] if I[0][0] < len(texts) else ""
+
 
                 # 空だった場合の処理（任意）
                 if not similar_text:
