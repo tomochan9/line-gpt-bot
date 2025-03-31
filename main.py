@@ -1,37 +1,51 @@
 from flask import Flask, request
-import openai
 import os
 import requests
 from dotenv import load_dotenv
+from openai import OpenAI
 
+# 環境変数の読み込み
 load_dotenv()
+
 LINE_CHANNEL_ACCESS_TOKEN = os.getenv("LINE_CHANNEL_ACCESS_TOKEN")
+LINE_CHANNEL_SECRET = os.getenv("LINE_CHANNEL_SECRET")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
-openai.api_key = OPENAI_API_KEY
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    data = request.json
+    data = request.get_json()
+    print("📩 LINEから受信：", data)
+
+    if data is None or "events" not in data:
+        return "Bad Request", 400
 
     for event in data["events"]:
         if event["type"] == "message" and event["message"]["type"] == "text":
             user_text = event["message"]["text"]
             reply_token = event["replyToken"]
 
-            # GPTで返信を生成
-            response = openai.ChatCompletion.create(
-                model="gpt-4",
-                messages=[
-                    {"role": "system", "content": "あなたは旅行とポイントに詳しい明るいお姉さんです。フレンドリーな口調で返答してください。"},
-                    {"role": "user", "content": user_text}
-                ]
-            )
-            reply_message = response["choices"][0]["message"]["content"]
-            send_line_reply(reply_token, reply_message)
+            try:
+                # GPTで返信を生成
+                response = client.chat.completions.create(
+                    model="gpt-4",
+                    messages=[
+                        {"role": "system", "content": "あなたは旅行とポイントに詳しい明るいお姉さんです。フレンドリーな口調で返答してください。"},
+                        {"role": "user", "content": user_text}
+                    ]
+                )
+                reply_message = response.choices[0].message.content
+                print("🤖 GPTの返答：", reply_message)
 
-    return "OK"
+                send_line_reply(reply_token, reply_message)
+
+            except Exception as e:
+                print("❌ GPTエラー：", e)
+                send_line_reply(reply_token, "ごめんなさい、エラーが発生しました💦")
+
+    return "OK", 200
 
 def send_line_reply(reply_token, text):
     headers = {
@@ -42,10 +56,13 @@ def send_line_reply(reply_token, text):
         "replyToken": reply_token,
         "messages": [{"type": "text", "text": text}]
     }
-    requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
+
+    try:
+        res = requests.post("https://api.line.me/v2/bot/message/reply", headers=headers, json=payload)
+        print("📤 LINE送信ステータス：", res.status_code, res.text)
+    except Exception as e:
+        print("❌ LINE返信エラー：", e)
 
 if __name__ == "__main__":
-    import os
-    port = int(os.environ.get("PORT", 5000))  # ← Renderが指定するPORTに合わせる
-    app.run(host="0.0.0.0", port=port)        # ← 外部からアクセス可能にする
-
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
