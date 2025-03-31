@@ -40,7 +40,15 @@ try:
         ]
     )
     reply_message = response.choices[0].message.content
-    print("🤖 GPTの返答：", reply_message_
+    print("🤖 GPTの返答：", reply_message)
+
+    send_line_reply(reply_token, reply_message)
+
+except Exception as e:
+    import traceback
+    print("❌ GPTエラー：", e)
+    traceback.print_exc()
+    send_line_reply(reply_token, "ごめんなさい、GPTとの通信でエラーが発生しました💦")
 
     return "OK", 200
 
