@@ -30,7 +30,6 @@ def webhook():
             reply_token = event["replyToken"]
 
             try:
-                # GPTで返答を生成
                 response = client.chat.completions.create(
                     model="gpt-4",
                     messages=[
@@ -52,7 +51,7 @@ def webhook():
                 traceback.print_exc()
                 send_line_reply(reply_token, "ごめんなさい、GPTとの通信でエラーが発生しました💦")
 
-    return "OK", 200
+    return "OK", 200  # ← この位置が正解！
 
 def send_line_reply(reply_token, text):
     headers = {
